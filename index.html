@@ -87,32 +87,9 @@
          box-shadow:0 0 calc(6px + 10px*var(--w)) rgba(255,255,255,calc(.3 + .6*var(--w)))}
   .meta{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;letter-spacing:.2em;
         color:var(--muted);font-variant-numeric:tabular-nums;text-transform:uppercase}
-  /* Big pulsing Sign in pill: block-level + auto margins so it is centred on the panel/viewport,
-     symmetric padding, label's trailing letter-spacing cancelled so icon+label sit dead centre */
-  .signin{position:relative;display:flex;align-items:center;justify-content:center;gap:15px;
-          width:max-content;min-width:308px;min-height:73px;margin:26px auto 0;padding:0 56px;border-radius:999px;
-          background:#fff;color:#000;text-decoration:none;font-weight:800;font-size:21px;line-height:1;
-          letter-spacing:.2em;text-transform:uppercase;border:1px solid #fff;
-          box-shadow:0 0 18px rgba(255,255,255,.3);transform-origin:50% 50%;
-          animation:signinBreathe 1.8s ease-in-out infinite;transition:background .2s,color .2s;
-          -webkit-tap-highlight-color:transparent;will-change:transform}
-  .signin .lbl{display:block;margin-right:-.2em}
-  .signin svg{width:22px;height:22px;flex:none;display:block}
-  /* expanding, fading halo ring */
-  .signin::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
-          box-shadow:0 0 0 0 rgba(255,255,255,0);animation:signinRing 1.8s ease-out infinite}
-  .signin:active{background:#e8e8e8}
-  .signin:focus-visible{outline:2px solid #fff;outline-offset:6px}
-  @keyframes signinBreathe{
-    0%,100%{transform:scale(1);box-shadow:0 0 14px rgba(255,255,255,.25)}
-    50%{transform:scale(1.06);box-shadow:0 0 38px rgba(255,255,255,.6)}
-  }
-  /* ring grows via box-shadow spread (never widens the page on phones, unlike scale) */
-  @keyframes signinRing{
-    0%{box-shadow:0 0 0 0 rgba(255,255,255,.85),0 0 10px 0 rgba(255,255,255,.5)}
-    80%,100%{box-shadow:0 0 0 20px rgba(255,255,255,0),0 0 28px 20px rgba(255,255,255,0)}
-  }
-  footer{text-align:center;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:20px}
+  footer{text-align:center;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:26px}
+  .nojs{margin-top:16px;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+  .nojs a{color:rgba(255,255,255,.8)}
   @media (max-width:520px){
     .badge{font-size:9px;padding:6px 10px;letter-spacing:.16em}
     .status{font-size:11px;letter-spacing:.14em}
@@ -121,14 +98,11 @@
     .alert{padding:6px 8px 5px;margin-bottom:16px}
     .alert strong{font-size:clamp(11px,3.3vw,13px);letter-spacing:.1em;padding-left:.1em}
     .alert small{font-size:8px;letter-spacing:.06em}
-    .signin{width:min(88vw,400px);min-width:0;min-height:76px;padding:0 24px;font-size:22px;margin-top:22px}
     .wordmark .l2{letter-spacing:.5em;padding-left:.5em;font-size:clamp(11px,3.4vw,15px)}
   }
   @media (prefers-reduced-motion:reduce){
     .badge i{animation:none}
     .alert strong{animation:none}
-    .signin{animation:none;transform:none;box-shadow:0 0 22px rgba(255,255,255,.35);transition:none}
-    .signin::after{animation:none;box-shadow:none}
     .status span{transition:none}
     .wordmark .glow,.wordmark .l1 svg{animation:none;opacity:1}
   }
@@ -161,7 +135,7 @@
     <div class="status" id="status"><span>Loading</span></div>
     <div class="bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><b id="fill"></b></div>
     <div class="meta"><span id="step">01 / 03</span><span id="pct">0%</span></div>
-    <a class="signin" id="continue" href="https://script.google.com/a/macros/strongpilates.co/s/AKfycbw8f6dheKB6kOgqyJcK-v2ba6zuQd2creuE9QL42heZ3BfJ7Tv5N_uNXk52UVHN3rg9/exec" aria-label="Sign in with your STRONG Google account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="lbl">Sign in</span></a>
+    <noscript><p class="nojs"><a href="https://script.google.com/a/macros/strongpilates.co/s/AKfycbw8f6dheKB6kOgqyJcK-v2ba6zuQd2creuE9QL42heZ3BfJ7Tv5N_uNXk52UVHN3rg9/exec">Continue to STRONG sign-in</a></p></noscript>
     <footer>STRONG Pilates &middot; Internal use &middot; Sign-in required</footer>
   </section>
 </main>
@@ -202,8 +176,8 @@
     if (hd && al){
       var top = hd.getBoundingClientRect().bottom + 12, bot = al.getBoundingClientRect().top - 18;
       if (bot - top > 120){
-        R = Math.min(R, (bot - top) / 2);
-        CY = Math.min(Math.max(CY, top + R), bot - R);
+        R = Math.min(W < 600 ? Math.min(W * 0.45, R * 1.1) : R * 1.1, (bot - top) / 2);   // a bit larger now the button is gone; keep side margins on phones
+        CY = (top + bot) / 2;        // centre the globe in the space between header and banner
       }
     }
     wm.style.top = CY + "px";
