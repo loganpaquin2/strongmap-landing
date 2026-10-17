@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#000000">
+<title>STRONG Global Map</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%23fff' stroke-width='3'/%3E%3Cellipse cx='32' cy='32' rx='7' ry='17' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cline x1='15' y1='32' x2='49' y2='32' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='44' cy='22' r='5' fill='%23ff3b30'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#000;--fg:#fff;--muted:rgba(255,255,255,.55);--faint:rgba(255,255,255,.12);--accent:#ff3b30;--w:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--fg)}
+  body{font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       -webkit-font-smoothing:antialiased;overflow:hidden;min-height:100svh}
+  canvas#globe{position:fixed;inset:0;width:100%;height:100%;display:block}
+  .vignette{position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(0,0,0,.65) 75%,#000 100%)}
+
+  /* Big pulsing wordmark across the centre of the globe (top set from JS to match the globe centre) */
+  .wordmark{position:fixed;left:0;right:0;top:42%;transform:translateY(-50%);z-index:1;pointer-events:none;
+            text-align:center;line-height:.92;user-select:none}
+  .wordmark .l1{display:block;width:clamp(220px,44vw,620px);margin:0 auto}
+  .wordmark .l1 svg,.mark svg{display:block;width:100%;height:auto;overflow:visible}
+  .wordmark .l2{display:block;margin-top:.7em;font-weight:300;letter-spacing:.62em;padding-left:.62em;
+                font-size:clamp(13px,2.1vw,30px)}
+  .wordmark .glow .l2{animation:pulse 2.2s ease-in-out infinite;
+                  text-shadow:0 0 18px rgba(255,255,255,.55),0 0 46px rgba(255,255,255,.35),0 2px 24px rgba(0,0,0,.9)}
+  .wordmark .l1 svg{filter:drop-shadow(0 0 5px rgba(255,255,255,.28)) drop-shadow(0 1px 10px rgba(0,0,0,.85));
+                  animation:pulseLogo 2.2s ease-in-out infinite;shape-rendering:geometricPrecision}
+  .mark svg{shape-rendering:geometricPrecision}
+  @keyframes pulse{
+    0%,100%{opacity:.28;text-shadow:0 0 4px rgba(255,255,255,.15),0 2px 18px rgba(0,0,0,.9)}
+    50%{opacity:1;text-shadow:0 0 18px rgba(255,255,255,.75),0 0 54px rgba(255,255,255,.45),0 2px 24px rgba(0,0,0,.9)}
+  }
+  /* logo pulse: soft halo well outside the letterforms; strokes stay sharp */
+  @keyframes pulseLogo{
+    0%,100%{opacity:.7;filter:drop-shadow(0 0 2px rgba(255,255,255,.12)) drop-shadow(0 1px 10px rgba(0,0,0,.85))}
+    50%{opacity:1;filter:drop-shadow(0 0 7px rgba(255,255,255,.38)) drop-shadow(0 0 22px rgba(255,255,255,.18)) drop-shadow(0 1px 10px rgba(0,0,0,.85))}
+  }
+  /* the logo pulses on its own; only the GLOBAL MAP text uses the text pulse */
+  .wordmark .glow .l1{animation:none}
+
+  .ui{position:relative;z-index:2;min-height:100svh;display:flex;flex-direction:column;
+      justify-content:space-between;padding:clamp(20px,4vw,44px);
+      padding-bottom:max(clamp(20px,4vw,44px),env(safe-area-inset-bottom))}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .mark{line-height:1}
+  .mark{width:clamp(150px,15vw,210px)}
+  .badge{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+         color:var(--muted);border:1px solid var(--faint);padding:8px 12px;border-radius:999px;white-space:nowrap}
+  .badge i{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);
+           animation:blink 1.4s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .panel{width:min(560px,100%);margin:0 auto;text-align:center}
+  /* Big red warning banner (always visible) */
+  .alert{position:relative;left:50%;transform:translateX(-50%);width:min(620px,calc(100vw - 40px));margin:0 0 18px;padding:7px 12px 6px;text-align:center;
+         border-top:1px solid rgba(255,45,45,.75);border-bottom:1px solid rgba(255,45,45,.75);
+         background:linear-gradient(180deg,rgba(40,0,0,.72),rgba(18,0,0,.72));
+         box-shadow:0 0 14px rgba(255,45,45,.2),inset 0 0 12px rgba(255,45,45,.1)}
+  .alert::before,.alert::after{content:"";position:absolute;left:0;right:0;height:3px;opacity:.85;
+         background:repeating-linear-gradient(-45deg,#ff2d2d 0 6px,transparent 6px 12px)}
+  .alert::before{top:-5px}
+  .alert::after{bottom:-5px}
+  .alert strong{display:block;color:#ff2d2d;font-weight:900;text-transform:uppercase;
+         font-size:clamp(12px,1.35vw,18px);letter-spacing:.2em;padding-left:.2em;line-height:1.15;
+         text-shadow:0 0 8px rgba(255,45,45,.7),0 0 20px rgba(255,45,45,.35);
+         animation:alertPulse 1.6s ease-in-out infinite}
+  .alert small{display:block;margin-top:4px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+         color:rgba(255,255,255,.72)}
+  @keyframes alertPulse{50%{opacity:.7;text-shadow:0 0 4px rgba(255,45,45,.4)}}
+  .status{height:22px;position:relative;overflow:hidden;margin-bottom:14px;font-size:13px;
+          letter-spacing:.24em;text-transform:uppercase;font-weight:600}
+  .status span{position:absolute;inset:0;transition:opacity .45s ease,transform .45s ease}
+  .status span.warn{color:#fff}
+  .status span.warn::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+          background:var(--accent);margin-right:10px;vertical-align:2px}
+  .status span.out{opacity:0;transform:translateY(-10px)}
+  .status span.in{opacity:0;transform:translateY(10px)}
+  .bar{height:2px;background:var(--faint);border-radius:2px;overflow:hidden}
+  /* fill brightens and glows whiter as the globe turns white */
+  .bar b{display:block;height:100%;width:0;
+         background:linear-gradient(90deg,rgba(255,255,255,.35),#fff);
+         box-shadow:0 0 calc(6px + 10px*var(--w)) rgba(255,255,255,calc(.3 + .6*var(--w)))}
+  .meta{display:flex;justify-content:space-between;margin-top:12px;font-size:11px;letter-spacing:.2em;
+        color:var(--muted);font-variant-numeric:tabular-nums;text-transform:uppercase}
+  /* Big pulsing Sign in pill: block-level + auto margins so it is centred on the panel/viewport,
+     symmetric padding, label's trailing letter-spacing cancelled so icon+label sit dead centre */
+  .signin{position:relative;display:flex;align-items:center;justify-content:center;gap:15px;
+          width:max-content;min-width:308px;min-height:73px;margin:26px auto 0;padding:0 56px;border-radius:999px;
+          background:#fff;color:#000;text-decoration:none;font-weight:800;font-size:21px;line-height:1;
+          letter-spacing:.2em;text-transform:uppercase;border:1px solid #fff;
+          box-shadow:0 0 18px rgba(255,255,255,.3);transform-origin:50% 50%;
+          animation:signinBreathe 1.8s ease-in-out infinite;transition:background .2s,color .2s;
+          -webkit-tap-highlight-color:transparent;will-change:transform}
+  .signin .lbl{display:block;margin-right:-.2em}
+  .signin svg{width:22px;height:22px;flex:none;display:block}
+  /* expanding, fading halo ring */
+  .signin::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+          box-shadow:0 0 0 0 rgba(255,255,255,0);animation:signinRing 1.8s ease-out infinite}
+  .signin:active{background:#e8e8e8}
+  .signin:focus-visible{outline:2px solid #fff;outline-offset:6px}
+  @keyframes signinBreathe{
+    0%,100%{transform:scale(1);box-shadow:0 0 14px rgba(255,255,255,.25)}
+    50%{transform:scale(1.06);box-shadow:0 0 38px rgba(255,255,255,.6)}
+  }
+  /* ring grows via box-shadow spread (never widens the page on phones, unlike scale) */
+  @keyframes signinRing{
+    0%{box-shadow:0 0 0 0 rgba(255,255,255,.85),0 0 10px 0 rgba(255,255,255,.5)}
+    80%,100%{box-shadow:0 0 0 20px rgba(255,255,255,0),0 0 28px 20px rgba(255,255,255,0)}
+  }
+  footer{text-align:center;font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:20px}
+  @media (max-width:520px){
+    .badge{font-size:9px;padding:6px 10px;letter-spacing:.16em}
+    .status{font-size:11px;letter-spacing:.14em}
+    .wordmark .l1{width:clamp(190px,68vw,330px)}
+    .mark{width:136px}
+    .alert{padding:6px 8px 5px;margin-bottom:16px}
+    .alert strong{font-size:clamp(11px,3.3vw,13px);letter-spacing:.1em;padding-left:.1em}
+    .alert small{font-size:8px;letter-spacing:.06em}
+    .signin{width:min(88vw,400px);min-width:0;min-height:76px;padding:0 24px;font-size:22px;margin-top:22px}
+    .wordmark .l2{letter-spacing:.5em;padding-left:.5em;font-size:clamp(11px,3.4vw,15px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .badge i{animation:none}
+    .alert strong{animation:none}
+    .signin{animation:none;transform:none;box-shadow:0 0 22px rgba(255,255,255,.35);transition:none}
+    .signin::after{animation:none;box-shadow:none}
+    .status span{transition:none}
+    .wordmark .glow,.wordmark .l1 svg{animation:none;opacity:1}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <!-- Official STRONG logo, PILATES in the O (paths verbatim from Drive "[with Pilates] STRONG-LOGO_..._horizontal-white.svg"; see strong-logo.svg) -->
+  <defs>
+    <g id="slogo-word" fill="#fff"><path d="M45.8,49.2c-6.8-1.7-11.2-3.1-13.1-4.4-1.9-1.2-2.8-2.9-2.8-5s.8-3.8,2.3-5c1.5-1.3,3.7-1.9,6.3-1.9,6.7,0,13.1,2.4,19.3,7.1l8.1-11.7c-3.6-3-7.8-5.4-12.5-7-4.8-1.6-9.6-2.5-14.4-2.5-7.3,0-13.5,1.9-18.4,5.6-4.9,3.7-7.4,9-7.4,15.8s1.9,11.8,5.8,15,10,5.8,18.4,7.8c5.3,1.3,8.8,2.6,10.6,3.9s2.7,3,2.7,5.1-.8,3.9-2.5,5.1c-1.7,1.3-4,1.9-6.9,1.9-6.6,0-13.8-3.4-21.5-10.2l-9.6,11.7c9.1,8.4,19.4,12.7,30.8,12.7s14.2-2,19.1-6c4.8-4,7.3-9.2,7.3-15.7s-1.9-11.4-5.7-14.7c-3.8-3.4-9.1-5.9-15.9-7.6h0Z"/><polygon points="80.9 34.3 101.2 34.3 117.3 34.3 137.7 34.3 137.7 20.4 80.9 20.4 80.9 34.3"/><polygon points="100.9 92.4 117.6 92.4 117.6 79.1 117.6 68.7 117.6 55.5 100.9 55.5 100.9 92.4"/><path d="M214.2,44.3c0-8.4-2.4-14.4-7.2-18.2-4.8-3.8-12.7-5.7-23.9-5.7h-27.3v71.9h16v-22.9h11.1l16,22.9h19.7l-18.2-25.7c9.1-3.4,13.7-10.8,13.7-22.3h0ZM194.9,52.9c-2,1.8-5.7,2.7-11.2,2.7h-11.7v-21.3h12c5.1,0,8.7.7,10.8,2.2s3.1,4.1,3.1,8-1,6.7-3,8.5h0Z"/><polygon points="378.2 66.7 342.9 20.4 327.9 20.4 327.9 92.4 343.9 92.4 343.9 47.3 378.2 92.4 394.2 92.4 394.2 20.4 378.2 20.4 378.2 66.7"/><path d="M489.7,54c0-.8,0-1.7-.2-2.5h-34.2v15.6h15.3c-1,1.9-2.2,3.5-3.7,5.1-4.1,4-9,6.1-14.9,6.2-5.9-.1-10.8-2.2-14.9-6.2-4.1-4.1-6.2-9.5-6.3-16.1,0-6.7,2.2-12.1,6.3-16.1,4.1-4,9-6.1,14.9-6.2.2,0,.3,0,.5,0,3.2,0,6.1.5,8.8,1.6,1.2.5,2.4,1.1,3.7,1.9,1.6,1,3.4,2.3,5.1,3.9l8.3-12c-7.1-6.4-15.5-9.8-25-10.2h0c-.5,0-1,0-1.5,0h-.4c-10.6,0-19.4,3.5-26.6,10.5-6.8,6.6-10.3,14.8-10.7,24.7,0,.6,0,1.2,0,1.8v.2c0,.7,0,1.3,0,2,.4,9.9,3.9,18.1,10.7,24.7,7.2,7,16,10.5,26.6,10.5h.8c10.6,0,19.4-3.5,26.6-10.5,4.6-4.5,7.7-9.6,9.3-15.6.8-2.9,1.3-5.9,1.4-9.1,0-.6,0-1.2,0-1.8v-.2c0-.7,0-1.3,0-2h0Z"/><path d="M289.5,65.6c-1,2.3-2.4,4.4-4.2,6.4-4.1,4.5-9.2,6.7-15.2,6.7s-11.1-2.3-15.2-6.7c-1.8-1.9-3.2-4.1-4.2-6.4h-17.2c1.6,6.3,4.8,11.7,9.7,16.5,7.3,7.1,16.2,10.7,26.9,10.7s19.6-3.6,26.9-10.7c4.8-4.7,8.1-10.2,9.7-16.5h-17.1,0Z"/><path d="M251.2,45.9c.9-1.8,2.1-3.5,3.6-5.1,4.1-4.5,9.2-6.7,15.2-6.7s11.1,2.3,15.2,6.7c1.5,1.6,2.7,3.3,3.6,5.1h17.5c-1.7-5.7-4.8-10.8-9.3-15.2-7.3-7.1-16.2-10.7-26.9-10.7s-19.6,3.6-26.9,10.7c-4.5,4.4-7.6,9.5-9.3,15.2h17.4,0Z"/></g>
+    <g id="slogo-pilates" fill="#fff"><path d="M239.7,51.5c.6.3,1.1.7,1.4,1.2.3.5.5,1.1.5,1.8s-.2,1.3-.5,1.8c-.3.5-.8.9-1.4,1.2-.6.3-1.4.4-2.2.4h-1.9v2.6h-2.2v-9.5h4.1c.8,0,1.6.1,2.2.4ZM238.9,55.7c.3-.3.5-.7.5-1.2s-.2-1-.5-1.2c-.3-.3-.8-.4-1.5-.4h-1.8v3.3h1.8c.7,0,1.2-.1,1.5-.4h0Z"/><path d="M246,51h2.2v9.5h-2.2v-9.5Z"/><path d="M253.2,51h2.2v7.7h4.8v1.8h-7v-9.5h0Z"/><path d="M270.5,58.5h-4.4l-.8,2h-2.3l4.3-9.5h2.2l4.3,9.5h-2.3l-.8-2ZM269.8,56.9l-1.5-3.7-1.5,3.7h3,0Z"/><path d="M278.9,52.8h-3.1v-1.8h8.3v1.8h-3.1v7.7h-2.2v-7.7h0Z"/><path d="M295.5,58.8v1.8h-7.4v-9.5h7.2v1.8h-5v2.1h4.4v1.7h-4.4v2.2h5.2,0Z"/><path d="M300.9,60.4c-.7-.2-1.3-.5-1.7-.8l.8-1.7c.4.3.9.5,1.5.7s1.1.3,1.7.3,1.1,0,1.4-.3.5-.4.5-.7,0-.4-.3-.6c-.2-.2-.4-.3-.7-.4s-.7-.2-1.1-.3c-.7-.2-1.3-.3-1.8-.5s-.9-.5-1.2-.8-.5-.9-.5-1.5.2-1.1.5-1.5.8-.8,1.4-1.1c.6-.3,1.3-.4,2.2-.4s1.2,0,1.8.2c.6.2,1.1.4,1.5.6l-.7,1.7c-.9-.5-1.8-.8-2.6-.8s-1.1.1-1.4.3-.4.5-.4.8.2.6.5.7.9.3,1.6.5c.7.2,1.3.3,1.8.5s.9.4,1.2.8c.3.4.5.9.5,1.5s-.2,1-.5,1.5-.8.8-1.4,1.1-1.3.4-2.2.4-1.5-.1-2.2-.3h0Z"/></g>
+  </defs>
+</svg>
+<canvas id="globe" aria-hidden="true"></canvas>
+<div class="vignette"></div>
+<div class="wordmark" id="wordmark" aria-hidden="true">
+  <div class="glow"><span class="l1"><svg viewBox="4 14 492 84" preserveAspectRatio="xMidYMid meet"><use href="#slogo-word"/><use href="#slogo-pilates"/></svg></span><span class="l2">GLOBAL MAP</span></div>
+</div>
+<main class="ui">
+  <header>
+    <div class="mark" aria-label="STRONG Pilates">
+      <svg viewBox="4 14 492 84" preserveAspectRatio="xMidYMid meet" role="img" aria-label="STRONG Pilates"><use href="#slogo-word"/><use href="#slogo-pilates"/></svg>
+    </div>
+    <div class="badge"><i></i>Restricted</div>
+  </header>
+
+  <section class="panel" aria-live="polite">
+    <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">STRONG Global Map</h1>
+    <div class="alert" role="alert"><strong>Unauthorized access prohibited</strong><small>Authorized STRONG personnel only. Access is logged by Google sign-in.</small></div>
+    <div class="status" id="status"><span>Loading</span></div>
+    <div class="bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><b id="fill"></b></div>
+    <div class="meta"><span id="step">01 / 03</span><span id="pct">0%</span></div>
+    <a class="signin" id="continue" href="https://script.google.com/a/macros/strongpilates.co/s/AKfycbw8f6dheKB6kOgqyJcK-v2ba6zuQd2creuE9QL42heZ3BfJ7Tv5N_uNXk52UVHN3rg9/exec" aria-label="Sign in with your STRONG Google account"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span class="lbl">Sign in</span></a>
+    <footer>STRONG Pilates &middot; Internal use &middot; Sign-in required</footer>
+  </section>
+</main>
+
+<script>
+(function(){
+  var TARGET = "https://script.google.com/a/macros/strongpilates.co/s/AKfycbw8f6dheKB6kOgqyJcK-v2ba6zuQd2creuE9QL42heZ3BfJ7Tv5N_uNXk52UVHN3rg9/exec";
+  var DURATION = 5000;
+  var LINES = ["Loading","Initializing global map","Redirecting to STRONG sign-in"];
+  var WARN = {1:true};   // the one line that gets the small red dot
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var clock = function(){ return performance.now(); };
+  var t0 = clock();
+
+  // Shared progress (0..1, eased) and "whiteness" (0 = dark/red look, 1 = full white)
+  function ease(x){ return x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x + 2, 2) / 2; }
+  function smooth(a, b, x){ x = Math.min(1, Math.max(0, (x - a) / (b - a))); return x*x*(3 - 2*x); }
+  function lerp(a, b, k){ return a + (b - a) * k; }
+  function progress(){ return Math.min(1, (clock() - t0) / DURATION); }
+  function whiteness(x){ return smooth(0.12, 0.88, x); }
+  function rgba(r, g, b, a){ return "rgba(" + Math.round(r) + "," + Math.round(g) + "," + Math.round(b) + "," + a.toFixed(3) + ")"; }
+  // accent red (255,59,48) -> white (255,255,255)
+  function accent(w, a){ return rgba(255, lerp(59, 255, w), lerp(48, 255, w), a); }
+
+  /* ---------- Globe ---------- */
+  var cv = document.getElementById("globe"), ctx = cv.getContext("2d");
+  var wm = document.getElementById("wordmark");
+  var W, H, DPR, R, CX, CY;
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    // preferred size (desktop back to the earlier larger globe), then fit it between header and red banner
+    R = W < 600 ? Math.min(W*0.44, H*0.27) : Math.min(W*0.3, H*0.31);
+    CX = W / 2; CY = H * (W < 600 ? 0.43 : 0.40);
+    var hd = document.querySelector("header"), al = document.querySelector(".alert");
+    if (hd && al){
+      var top = hd.getBoundingClientRect().bottom + 12, bot = al.getBoundingClientRect().top - 18;
+      if (bot - top > 120){
+        R = Math.min(R, (bot - top) / 2);
+        CY = Math.min(Math.max(CY, top + R), bot - R);
+      }
+    }
+    wm.style.top = CY + "px";
+  }
+  resize(); window.addEventListener("resize", resize);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
+
+  // Fibonacci sphere dots
+  var N = 1400, pts = [];
+  var ga = Math.PI * (3 - Math.sqrt(5));
+  for (var i = 0; i < N; i++){
+    var y = 1 - (i / (N - 1)) * 2, r = Math.sqrt(1 - y*y), t = ga * i;
+    pts.push([Math.cos(t)*r, y, Math.sin(t)*r]);
+  }
+  // per-dot twinkle phase/speed (seeded, so it looks the same every load) and ~4% "spark" dots
+  var seed = 7; function rnd(){ seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  var tw = new Float32Array(N), sp = new Float32Array(N), spark = new Uint8Array(N);
+  for (var j = 0; j < N; j++){ tw[j] = rnd() * 6.283; sp[j] = 0.8 + rnd() * 2.2; spark[j] = rnd() < 0.04 ? 1 : 0; }
+  // Highlighted nodes (approximate studio-market cities: lat, lon)
+  var cities = [[40.7,-74],[34,-118.2],[41.9,-87.6],[32.8,-96.8],[29.4,-98.5],[25.8,-80.2],[47.6,-122.3],[39.7,-105],
+                [43.7,-79.4],[49.3,-123.1],[51.5,-0.1],[53.5,-2.2],[55.9,-3.2],[-33.9,151.2],[-37.8,145],[-27.5,153],
+                [-31.9,115.9],[-36.8,174.8],[1.35,103.8],[25.2,55.3],[33.7,-84.4]];
+  var nodes = cities.map(function(c, k){
+    var la = c[0]*Math.PI/180, lo = c[1]*Math.PI/180;
+    return {p:[Math.cos(la)*Math.cos(lo), Math.sin(la), Math.cos(la)*Math.sin(lo)], ph:k*0.37};
+  });
+  var tilt = 0.38, cosT = Math.cos(tilt), sinT = Math.sin(tilt);
+
+  /* ---------- Flight paths between STRONG markets (great-circle arcs lifted off the surface) ---------- */
+  function unit(la, lo){ la *= Math.PI/180; lo *= Math.PI/180; return [Math.cos(la)*Math.cos(lo), Math.sin(la), Math.cos(la)*Math.sin(lo)]; }
+  var C = {ATL:[33.7,-84.4], LON:[51.5,-0.1], LAX:[34,-118.2], SYD:[-33.9,151.2], NYC:[40.7,-74], DXB:[25.2,55.3],
+           YYZ:[43.7,-79.4], AKL:[-36.8,174.8], MIA:[25.8,-80.2], SIN:[1.35,103.8], DFW:[32.8,-96.8], BNE:[-27.5,153],
+           CHI:[41.9,-87.6], MEL:[-37.8,145], SEA:[47.6,-122.3], PER:[-31.9,115.9], DEN:[39.7,-105], MAN:[53.5,-2.2],
+           SAT:[29.4,-98.5], EDI:[55.9,-3.2], YVR:[49.3,-123.1]};
+  var ROUTES = [["ATL","LON"],["LAX","SYD"],["NYC","DXB"],["YYZ","AKL"],["MIA","SIN"],["DFW","BNE"],
+                ["CHI","MEL"],["SEA","PER"],["DEN","MAN"],["SAT","EDI"],["YVR","SYD"],["NYC","LON"],["LAX","AKL"],["DXB","SIN"]];
+  var SEG = 56;
+  var routes = ROUTES.map(function(r){
+    var a = unit(C[r[0]][0], C[r[0]][1]), b = unit(C[r[1]][0], C[r[1]][1]);
+    var om = Math.acos(Math.max(-1, Math.min(1, a[0]*b[0] + a[1]*b[1] + a[2]*b[2]))), so = Math.sin(om);
+    var lift = 0.05 + 0.2 * (om / Math.PI), pts = [];
+    for (var i = 0; i <= SEG; i++){
+      var s = i / SEG, ka = Math.sin((1 - s) * om) / so, kb = Math.sin(s * om) / so, h = 1 + lift * Math.sin(Math.PI * s);
+      pts.push([(a[0]*ka + b[0]*kb) * h, (a[1]*ka + b[1]*kb) * h, (a[2]*ka + b[2]*kb) * h]);
+    }
+    return {pts: pts, len: om};
+  });
+  var flights = [], nextSpawn = 0, lastRoute = -1;
+  var F_DRAW = 2.6, F_HOLD = 0.5, F_FADE = 1.0;   // seconds
+  function spawn(t, rot){
+    // prefer a route that isn't already flying and whose midpoint faces the viewer
+    var busy = {}; flights.forEach(function(f){ busy[f.r] = 1; });
+    var best = -1, bestScore = -9;
+    for (var k = 0; k < routes.length; k++){
+      if (busy[k] || k === lastRoute) continue;
+      var mid = proj(routes[k].pts[SEG >> 1], rot);
+      var score = mid[2] + Math.random() * 0.8;
+      if (score > bestScore){ bestScore = score; best = k; }
+    }
+    if (best < 0) return;
+    lastRoute = best;
+    flights.push({r: best, t0: t, dur: F_DRAW * (0.75 + 0.5 * routes[best].len / Math.PI)});
+  }
+  // draw a polyline from route points [0..upto] (fractional), hiding parts occluded by the globe
+  function strokeRoute(rt, upto, rot){
+    var n = Math.floor(upto), frac = upto - n, prev = null, open = false, last = null;
+    ctx.beginPath();
+    for (var i = 0; i <= Math.min(n + 1, SEG); i++){
+      var p = rt.pts[i];
+      if (i === n + 1){ var q0 = rt.pts[n]; p = [q0[0] + (p[0]-q0[0])*frac, q0[1] + (p[1]-q0[1])*frac, q0[2] + (p[2]-q0[2])*frac]; }
+      var q = proj(p, rot), dx = (q[0] - CX) / R, dy = (q[1] - CY) / R;
+      var vis = q[2] > 0 || dx*dx + dy*dy > 1;   // in front, or outside the disc (lifted above the limb)
+      if (vis){ if (open) ctx.lineTo(q[0], q[1]); else { ctx.moveTo(q[0], q[1]); open = true; } }
+      else open = false;
+      last = {x: q[0], y: q[1], vis: vis};
+    }
+    ctx.stroke();
+    return last;
+  }
+
+  function proj(p, rot){
+    var c = Math.cos(rot), s = Math.sin(rot);
+    var x = p[0]*c - p[2]*s, z = p[0]*s + p[2]*c, y = p[1];
+    var y2 = y*cosT - z*sinT, z2 = y*sinT + z*cosT;
+    return [CX + x*R, CY - y2*R, z2];
+  }
+  var start = clock();
+  function draw(){
+    var now = clock(), t = (now - start) / 1000;
+    var w = whiteness(progress());
+    var rot = reduce ? 1.9 : 1.9 + t * 0.18;
+    ctx.clearRect(0,0,W,H);
+
+    // halo: red tint -> bright white glow
+    var g = ctx.createRadialGradient(CX, CY, R*0.85, CX, CY, R*lerp(1.35, 1.6, w));
+    g.addColorStop(0, accent(w, lerp(0.10, 0.26, w))); g.addColorStop(1, accent(w, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(CX, CY, R*1.6, 0, Math.PI*2); ctx.fill();
+    // faint sphere body that lights up as it turns white
+    if (w > 0.01){
+      var b = ctx.createRadialGradient(CX - R*0.3, CY - R*0.35, R*0.1, CX, CY, R);
+      b.addColorStop(0, rgba(255,255,255, 0.10*w)); b.addColorStop(1, rgba(255,255,255, 0.02*w));
+      ctx.fillStyle = b; ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2); ctx.fill();
+    }
+    // rim / outline: dim -> bright white with glow
+    ctx.save();
+    ctx.strokeStyle = rgba(255,255,255, lerp(0.10, 0.95, w));
+    ctx.lineWidth = lerp(1, 1.8, w);
+    ctx.shadowColor = rgba(255,255,255, 0.9*w); ctx.shadowBlur = 22*w;
+    ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // dots: dim grey -> bright white; they twinkle, swell in travelling waves, sparks flare as they rotate into view,
+    // and a soft scanning band sweeps across. Everything is tinted by w so it follows the dark-to-white shift.
+    var ds = lerp(1.6, 2.2, w);
+    var tm = reduce ? 0 : t;
+    var scan = reduce ? -9 : (((tm * 0.22) % 1.5) - 0.25) * 2 - 1;   // band centre in globe units (-1.5..1.5), ~6.8s per sweep
+    var flares = [];
+    for (var i = 0; i < N; i++){
+      var q = proj(pts[i], rot);
+      if (q[2] < -0.05) continue;
+      var front = Math.max(0, q[2]);
+      var ux = (q[0] - CX) / R;                                         // rotated x in globe units (+ = side dots enter from)
+      var a = lerp(0.08 + 0.55*front, 0.22 + 0.78*front, w);
+      var wave = 0.5 + 0.5 * Math.sin(pts[i][1] * 5 + ux * 2.2 - tm * 1.6);   // travelling brightness/size wave
+      var twk = 0.5 + 0.5 * Math.sin(tm * sp[i] + tw[i]);                   // individual twinkle
+      var band = Math.max(0, 1 - Math.abs(ux - scan) / 0.16);               // scanning band
+      band = band * band;
+      a = a * (0.62 + 0.26 * twk + 0.22 * wave) + band * 0.45 * front;
+      var sz = ds * (0.85 + 0.35 * wave + 0.25 * band);
+      if (a > 1) a = 1;
+      ctx.fillStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
+      ctx.fillRect(q[0] - sz/2, q[1] - sz/2, sz, sz);
+      // spark dots light up just after they come round the limb, then fade as they cross
+      if (spark[i] && ux > 0 && q[2] > 0 && q[2] < 0.6) flares.push(q[0], q[1], Math.sin(Math.PI * q[2] / 0.6), tw[i]);
+    }
+    // scanning band glow (clipped to the sphere)
+    if (!reduce && scan > -1.3 && scan < 1.3){
+      ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, R, 0, Math.PI*2); ctx.clip();
+      var bx = CX + scan * R, gb = ctx.createLinearGradient(bx - R*0.2, 0, bx + R*0.2, 0);
+      gb.addColorStop(0, accent(w, 0)); gb.addColorStop(0.5, accent(w, lerp(0.07, 0.11, w))); gb.addColorStop(1, accent(w, 0));
+      ctx.fillStyle = gb; ctx.fillRect(bx - R*0.2, CY - R, R*0.4, R*2);
+      ctx.restore();
+    }
+    // flaring spark dots (accent red early, white later), with a soft pulsing ring
+    for (var f = 0; f < flares.length; f += 4){
+      var fi = flares[f+2], pz = reduce ? 0.5 : 0.5 + 0.5 * Math.sin(tm * 5 + flares[f+3]);
+      ctx.fillStyle = accent(w, 0.85 * fi);
+      ctx.beginPath(); ctx.arc(flares[f], flares[f+1], 1.4 + 1.2 * fi, 0, Math.PI*2); ctx.fill();
+      ctx.strokeStyle = accent(w, 0.35 * fi * (1 - pz)); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(flares[f], flares[f+1], 3 + 7 * pz * fi, 0, Math.PI*2); ctx.stroke();
+    }
+    // flight-path arcs: 2-4 at a time, each draws with a bright "plane" head, holds, then fades
+    ctx.save(); ctx.lineCap = "round";
+    if (reduce){
+      ctx.strokeStyle = accent(w, lerp(0.14, 0.24, w)); ctx.lineWidth = 1;
+      for (var rr = 0; rr < routes.length; rr += 2) strokeRoute(routes[rr], SEG, rot);
+    } else {
+      flights = flights.filter(function(f){ return t - f.t0 < f.dur + F_HOLD + F_FADE; });
+      if (flights.length < 2 || (flights.length < 4 && t >= nextSpawn)){ spawn(t, rot); nextSpawn = t + 0.8 + Math.random() * 0.9; }
+      for (var fl = 0; fl < flights.length; fl++){
+        var F = flights[fl], age = t - F.t0, rt = routes[F.r];
+        var pr = Math.min(1, age / F.dur), e2 = 1 - Math.pow(1 - pr, 2);              // ease-out draw
+        var fade = age < F.dur + F_HOLD ? 1 : Math.max(0, 1 - (age - F.dur - F_HOLD) / F_FADE);
+        var fadeIn = Math.min(1, age / 0.25);
+        ctx.strokeStyle = accent(w, lerp(0.38, 0.6, w) * fade * fadeIn);
+        ctx.lineWidth = lerp(1.1, 1.5, w);
+        var head = strokeRoute(rt, e2 * SEG, rot);
+        // plane head while drawing
+        if (pr < 1 && head && head.vis){
+          ctx.fillStyle = accent(w, 0.18 * fadeIn);
+          ctx.beginPath(); ctx.arc(head.x, head.y, 6, 0, Math.PI*2); ctx.fill();
+          ctx.fillStyle = rgba(255, 255, 255, 0.95 * fadeIn);
+          ctx.beginPath(); ctx.arc(head.x, head.y, 1.9, 0, Math.PI*2); ctx.fill();
+        }
+        // landing ping at the destination
+        if (pr >= 1 && head && head.vis){
+          var lp = Math.min(1, (age - F.dur) / (F_HOLD + F_FADE));
+          ctx.strokeStyle = accent(w, 0.7 * (1 - lp)); ctx.lineWidth = 1.2;
+          ctx.beginPath(); ctx.arc(head.x, head.y, 3 + lp * 12, 0, Math.PI*2); ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+    // pulsing nodes (red -> white)
+    for (var n = 0; n < nodes.length; n++){
+      var p = proj(nodes[n].p, rot);
+      if (p[2] < 0.02) continue;
+      var vis2 = Math.min(1, p[2] * 2.5);
+      var ph = reduce ? 0.5 : ((t * 0.6 + nodes[n].ph) % 1);
+      ctx.strokeStyle = accent(w, 0.6 * (1 - ph) * vis2);
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 3 + ph * 14, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = accent(w, vis2);
+      ctx.beginPath(); ctx.arc(p[0], p[1], 2.4, 0, Math.PI*2); ctx.fill();
+    }
+    document.documentElement.style.setProperty("--w", w.toFixed(3));
+    // reduced motion: no rotation or pulsing, but keep redrawing slowly so the colour shift still happens
+    if (!reduce) requestAnimationFrame(draw);
+    else if (w < 1) setTimeout(draw, 200);
+  }
+  requestAnimationFrame(draw);
+  if (reduce) window.addEventListener("resize", function(){ requestAnimationFrame(draw); });
+
+  /* ---------- Progress + status ---------- */
+  var fill = document.getElementById("fill"), bar = document.getElementById("bar"),
+      pct = document.getElementById("pct"), stepEl = document.getElementById("step"),
+      status = document.getElementById("status");
+  var current = 0;
+  function setLine(i){
+    if (i === current) return;
+    current = i;
+    var old = status.querySelector("span:not(.out)");
+    var nu = document.createElement("span");
+    nu.textContent = LINES[i];
+    var cls = WARN[i] ? "warn" : "";
+    if (!reduce){
+      nu.className = "in " + cls; status.appendChild(nu);
+      void nu.offsetWidth; nu.className = cls;
+      if (old){ old.className = "out"; setTimeout(function(){ old.remove(); }, 500); }
+    } else { nu.className = cls; status.innerHTML = ""; status.appendChild(nu); }
+    stepEl.textContent = "0" + (i+1) + " / 0" + LINES.length;
+  }
+  var done = false;
+  function go(){ if (done) return; done = true; window.location.replace(TARGET); }
+  function tick(){
+    var x = progress(), e = ease(x), v = Math.round(e * 100);
+    fill.style.width = (e * 100).toFixed(2) + "%";
+    pct.textContent = v + "%"; bar.setAttribute("aria-valuenow", v);
+    setLine(Math.min(LINES.length - 1, Math.floor(x * LINES.length)));
+    if (x < 1) requestAnimationFrame(tick); else setTimeout(go, 250);
+  }
+  requestAnimationFrame(tick);
+  // Safety net in case rAF is throttled (background tab)
+  setTimeout(go, DURATION + 1500);
+})();
+</script>
+</body>
+</html>
