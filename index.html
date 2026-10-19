@@ -57,19 +57,19 @@
   @keyframes blink{50%{opacity:.25}}
   .panel{width:min(560px,100%);margin:0 auto;text-align:center}
   /* Big red warning banner (always visible) */
-  .alert{position:relative;left:50%;transform:translateX(-50%);width:min(620px,calc(100vw - 40px));margin:0 0 18px;padding:7px 12px 6px;text-align:center;
+  .alert{position:relative;left:50%;transform:translateX(-50%);width:min(330px,calc(100vw - 40px));margin:0 0 14px;padding:4px 8px 3px;text-align:center;
          border-top:1px solid rgba(255,45,45,.75);border-bottom:1px solid rgba(255,45,45,.75);
          background:linear-gradient(180deg,rgba(40,0,0,.72),rgba(18,0,0,.72));
-         box-shadow:0 0 14px rgba(255,45,45,.2),inset 0 0 12px rgba(255,45,45,.1)}
-  .alert::before,.alert::after{content:"";position:absolute;left:0;right:0;height:3px;opacity:.85;
-         background:repeating-linear-gradient(-45deg,#ff2d2d 0 6px,transparent 6px 12px)}
-  .alert::before{top:-5px}
-  .alert::after{bottom:-5px}
+         box-shadow:0 0 8px rgba(255,45,45,.2),inset 0 0 6px rgba(255,45,45,.1)}
+  .alert::before,.alert::after{content:"";position:absolute;left:0;right:0;height:2px;opacity:.85;
+         background:repeating-linear-gradient(-45deg,#ff2d2d 0 4px,transparent 4px 8px)}
+  .alert::before{top:-4px}
+  .alert::after{bottom:-4px}
   .alert strong{display:block;color:#ff2d2d;font-weight:900;text-transform:uppercase;
-         font-size:clamp(12px,1.35vw,18px);letter-spacing:.2em;padding-left:.2em;line-height:1.15;
+         font-size:clamp(9px,.7vw,10px);letter-spacing:.18em;padding-left:.2em;line-height:1.15;
          text-shadow:0 0 8px rgba(255,45,45,.7),0 0 20px rgba(255,45,45,.35);
          animation:alertPulse 1.6s ease-in-out infinite}
-  .alert small{display:block;margin-top:4px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  .alert small{display:block;margin-top:2px;font-size:7px;letter-spacing:.12em;text-transform:uppercase;
          color:rgba(255,255,255,.72)}
   @keyframes alertPulse{50%{opacity:.7;text-shadow:0 0 4px rgba(255,45,45,.4)}}
   .status{height:22px;position:relative;overflow:hidden;margin-bottom:14px;font-size:13px;
@@ -101,6 +101,14 @@
     .wordmark .l2{letter-spacing:.5em;padding-left:.5em;font-size:clamp(11px,3.4vw,15px)}
   }
   .alert small,footer{white-space:nowrap}
+  /* Phones: banner about half size (Logan 10/19) */
+  @media (max-width:600px){
+    .alert{width:min(232px,calc(100vw - 40px));padding:3px 6px 2px;margin-bottom:12px;box-shadow:0 0 6px rgba(255,45,45,.2),inset 0 0 4px rgba(255,45,45,.1)}
+    .alert::before,.alert::after{height:2px}
+    .alert::before{top:-4px}.alert::after{bottom:-4px}
+    .alert strong{font-size:8.5px;letter-spacing:.12em;padding-left:.12em}
+    .alert small{font-size:5.8px;letter-spacing:.03em;margin-top:1px}
+  }
   @media (prefers-reduced-motion:reduce){
     .badge i{animation:none}
     .alert strong{animation:none}
